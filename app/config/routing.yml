@@ -1,3 +1,7 @@
+jgc_user:
+    resource: "@JGCUserBundle/Resources/config/routing.yml"
+    prefix:   /
+
 app:
     resource: "@AppBundle/Controller/"
     type:     annotation

@@ -1,0 +1,4 @@
+services:
+#    jgc_user.example:
+#        class: JGC\UserBundle\Example
+#        arguments: [@service_id, "plain_value", %parameter%]
