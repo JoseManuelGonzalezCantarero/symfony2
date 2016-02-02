@@ -10,6 +10,11 @@ jgc_user_add:
     path:   /user/add
     defaults:   { _controller: JGCUserBundle:User:add }
 
+jgc_user_create:
+    path:   /user/create
+    defaults:   { _controller: JGCUserBundle:User:create }
+    methods: POST
+
 jgc_user_edit:
     path:   /user/edit/{id}
     defaults:   { _controller: JGCUserBundle:User:edit }
