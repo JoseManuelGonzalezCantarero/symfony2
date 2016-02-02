@@ -10,14 +10,17 @@ class UserController extends Controller
 
         $users = $em->getRepository('JGCUserBundle:User')->findAll();
 
+        /*
         $res = 'Lista de usuarios: <br />';
-
+        
         foreach ($users as $user)
         {
             $res .= 'Usuario: '.$user->getUsername().' - Email: '.$user->getEmail().'<br />';
         }
-
+        
         return new Response($res);
+        */
+        return $this->render('JGCUserBundle:User:index.html.twig', array('users' => $users));
     }
 
     public function viewAction($id)
