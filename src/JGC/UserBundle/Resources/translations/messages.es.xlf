@@ -102,6 +102,22 @@
                 <source>Delete</source>
                 <target>Eliminar</target>
             </trans-unit>
+            <trans-unit id="26">
+                <source>The user has been created</source>
+                <target>El usuario ha sido creado</target>
+            </trans-unit>
+            <trans-unit id="27">
+                <source>Previous</source>
+                <target>Anterior</target>
+            </trans-unit>
+            <trans-unit id="28">
+                <source>Next</source>
+                <target>Siguiente</target>
+            </trans-unit>
+            <trans-unit id="29">
+                <source>Total records</source>
+                <target>Total de registros</target>
+            </trans-unit>
         </body>
     </file>
 </xliff>
