@@ -19,6 +19,11 @@ jgc_user_edit:
     path:   /user/edit/{id}
     defaults:   { _controller: JGCUserBundle:User:edit }
 
+jgc_user_update:
+    path:   /user/update/{id}
+    defaults:   { _controller: JGCUserBundle:User:update }
+    methods: [POST, PUT]
+
 jgc_user_view:
     path:   /user/view/{id}
     defaults:   { _controller: JGCUserBundle:User:view }
@@ -32,4 +37,11 @@ jgc_user_redirect_add:
     defaults:
         _controller: JGCUserBundle:User:add
         path: /user/add
+        permanent: true
+
+jgc_user_redirect_edit:
+    path: /user/update/{id}
+    defaults:
+        _controller: JGCUserBundle:User:edit
+        path: /user/edit/{id}
         permanent: true
