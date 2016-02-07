@@ -31,6 +31,7 @@ jgc_user_view:
 jgc_user_delete:
     path:   /user/delete/{id}
     defaults:   { _controller: JGCUserBundle:User:delete }
+    methods: [POST, DELETE]
 
 jgc_user_redirect_add:
     path: /user/create
