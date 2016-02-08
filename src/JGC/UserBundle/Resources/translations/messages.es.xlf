@@ -150,6 +150,10 @@
                 <source>Are you sure?</source>
                 <target>¿ Está seguro ?</target>
             </trans-unit>
+            <trans-unit id="38">
+                <source>The user could not be deleted</source>
+                <target>El usuario no ha sido eliminado</target>
+            </trans-unit>
         </body>
     </file>
 </xliff>

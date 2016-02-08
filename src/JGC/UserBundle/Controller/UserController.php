@@ -37,7 +37,9 @@ class UserController extends Controller
             5
         );
 
-        return $this->render('JGCUserBundle:User:index.html.twig', array('pagination' => $pagination));
+        $delete_form_ajax = $this->createCustomForm(':USER_ID', 'DELETE', 'jgc_user_delete');
+
+        return $this->render('JGCUserBundle:User:index.html.twig', array('pagination' => $pagination, 'delete_form_ajax' => $delete_form_ajax->createView()));
     }
 
     public function editAction($id)
@@ -46,8 +48,7 @@ class UserController extends Controller
 
         $user = $em->getRepository('JGCUserBundle:User')->find($id);
 
-        if(!$user)
-        {
+        if (!$user) {
             $messageException = $this->get('translator')->trans('User not found');
             throw $this->createNotFoundException($messageException);
         }
@@ -63,8 +64,7 @@ class UserController extends Controller
 
         $user = $em->getRepository('JGCUserBundle:User')->find($id);
 
-        if(!$user)
-        {
+        if (!$user) {
             $messageException = $this->get('translator')->trans('User not found');
             throw $this->createNotFoundException($messageException);
         }
@@ -73,31 +73,120 @@ class UserController extends Controller
 
         $form->handleRequest($request);
 
-        if($form->isSubmitted() && $form->isValid())
-        {
+        if ($form->isSubmitted() && $form->isValid()) {
             $password = $form->get('password')->getData();
-            if(!empty(($password)))
-            {
+            if (!empty(($password))) {
                 $encoder = $this->container->get('security.password_encoder');
                 $encoded = $encoder->encodePassword($user, $password);
                 $user->setPassword($encoded);
-            }else
-            {
+            } else {
                 $recoverPass = $this->recoverPass($id);
                 $user->setPassword($recoverPass[0]['password']);
             }
 
-            if($form->get('role')->getData() == 'ROLE_ADMIN')
-            {
+            if ($form->get('role')->getData() == 'ROLE_ADMIN') {
                 $user->setIsActive(1);
             }
             $em->flush();
 
             $successMessage = $this->get('translator')->trans('The user has been modified');
             $this->addFlash('mensaje', $successMessage);
-            return $this->redirectToRoute('jgc_user_edit', array('id'=> $user->getId()));
+            return $this->redirectToRoute('jgc_user_edit', array('id' => $user->getId()));
         }
-        return $this->render('JGCUserBundle:User:edit.html.twig', array('user'=>$user, 'form'=>$form->createView()));
+        return $this->render('JGCUserBundle:User:edit.html.twig', array('user' => $user, 'form' => $form->createView()));
+    }
+
+    public function viewAction($id)
+    {
+        $repository = $this->getDoctrine()->getRepository('JGCUserBundle:User');
+
+        $user = $repository->find($id);
+
+        if (!$user) {
+            $messageException = $this->get('translator')->trans('User not found');
+            throw $this->createNotFoundException($messageException);
+        }
+
+        $deleteForm = $this->createCustomForm($user->getId(), 'DELETE', 'jgc_user_delete');
+
+        return $this->render('JGCUserBundle:User:view.html.twig', array('user' => $user, 'delete_form' => $deleteForm->createView()));
+    }
+
+    public function deleteAction(Request $request, $id)
+    {
+        $em = $this->getDoctrine()->getManager();
+        $user = $em->getRepository('JGCUserBundle:User')->find($id);
+
+        if (!$user) {
+            $messageException = $this->get('translator')->trans('User not found');
+            throw $this->createNotFoundException($messageException);
+        }
+
+        $allUsers = $em->getRepository('JGCUserBundle:User')->findAll();
+        $countUsers = count($allUsers);
+
+        //$form = $this->createDeleteForm($user);
+        $form = $this->createCustomForm($user->getId(), 'DELETE', 'jgc_user_delete');
+        $form->handleRequest($request);
+
+        if ($form->isSubmitted() && $form->isValid()) {
+            if ($request->isXmlHttpRequest()) {
+                $res = $this->deleteUser($user->getRole(), $em, $user);
+                return new Response(
+                    json_encode(array('removed'=>$res['removed'], 'message'=>$res['message'], 'countUsers'=>$countUsers)), 200, array('Content-Type'=>'application/json')
+                );
+            }
+
+            $res = $this->deleteUser($user->getRole(), $em, $user);
+
+            $this->addFlash($res['alert'], $res['message']);
+
+            return $this->redirectToRoute('jgc_user_index');
+        }
+    }
+
+    public function addAction()
+    {
+        $user = new User();
+        $form = $this->createCreateForm($user);
+
+        return $this->render('JGCUserBundle:User:add.html.twig', array('form' => $form->createView()));
+    }
+
+    public function createAction(Request $request)
+    {
+        $user = new User();
+        $form = $this->createCreateForm($user);
+        $form->handleRequest($request);
+
+        if ($form->isValid()) {
+            $password = $form->get('password')->getData();
+
+            $passwordConstraint = new Assert\NotBlank();
+            $errorList = $this->get('validator')->validate($password, $passwordConstraint);
+
+            if (count($errorList) == 0) {
+                $encoder = $this->container->get('security.password_encoder');
+                $encoded = $encoder->encodePassword($user, $password);
+
+                $user->setPassword($encoded);
+
+                $em = $this->getDoctrine()->getManager();
+                $em->persist($user);
+                $em->flush();
+
+                $successMessage = $this->get('translator')->trans('The user has been created');
+                $this->addFlash('mensaje', $successMessage);
+
+                return $this->redirectToRoute('jgc_user_index');
+            } else {
+                $errorMessage = new FormError($errorList[0]->getMessage());
+                $form->get('password')->addError($errorMessage);
+            }
+        }
+
+        return $this->render('JGCUserBundle:User:add.html.twig', array('form' => $form->createView()));
+
     }
 
     private function recoverPass($id)
@@ -112,68 +201,9 @@ class UserController extends Controller
 
     private function createEditForm(User $entity)
     {
-        $form = $this->createForm(new UserType(), $entity, array('action'=>$this->generateUrl('jgc_user_update', array('id' => $entity->getId())), 'method'=>'PUT'));
+        $form = $this->createForm(new UserType(), $entity, array('action' => $this->generateUrl('jgc_user_update', array('id' => $entity->getId())), 'method' => 'PUT'));
 
         return $form;
-    }
-
-    public function viewAction($id)
-    {
-        $repository = $this->getDoctrine()->getRepository('JGCUserBundle:User');
-
-        $user = $repository->find($id);
-
-        if(!$user)
-        {
-            $messageException = $this->get('translator')->trans('User not found');
-            throw $this->createNotFoundException($messageException);
-        }
-
-        $deleteForm = $this->createDeleteForm($user);
-
-        return $this->render('JGCUserBundle:User:view.html.twig', array('user'=>$user, 'delete_form'=>$deleteForm->createView()));
-    }
-
-    private function createDeleteForm($user)
-    {
-        return $this->createFormBuilder()
-            ->setAction($this->generateUrl('jgc_user_delete', array('id'=>$user->getId())))
-            ->setMethod('DELETE')
-            ->getForm();
-    }
-
-    public function deleteAction(Request $request, $id)
-    {
-        $em = $this->getDoctrine()->getManager();
-        $user = $em->getRepository('JGCUserBundle:User')->find($id);
-
-        if(!$user)
-        {
-            $messageException = $this->get('translator')->trans('User not found');
-            throw $this->createNotFoundException($messageException);
-        }
-
-        $form = $this->createDeleteForm($user);
-        $form->handleRequest($request);
-
-        if($form->isSubmitted() && $form->isValid())
-        {
-            $em->remove($user);
-            $em->flush();
-
-            $successMessage = $this->get('translator')->trans('The user has been deleted');
-            $this->addFlash('mensaje', $successMessage);
-
-            return $this->redirectToRoute('jgc_user_index');
-        }
-    }
-
-    public function addAction()
-    {
-        $user = new User();
-        $form = $this->createCreateForm($user);
-
-        return $this->render('JGCUserBundle:User:add.html.twig', array('form' => $form->createView()));
     }
 
     private function createCreateForm(User $entity)
@@ -182,42 +212,29 @@ class UserController extends Controller
         return $form;
     }
 
-    public function createAction(Request $request)
+    private function createCustomForm($id, $method, $route)
     {
-        $user = new User();
-        $form = $this->createCreateForm($user);
-        $form->handleRequest($request);
+        return $this->createFormBuilder()
+            ->setAction($this->generateUrl($route, array('id' => $id)))
+            ->setMethod($method)
+            ->getForm();
+    }
 
-        if ($form->isValid())
-        {
-            $password = $form->get('password')->getData();
+    private function deleteUser($role, $em, $user)
+    {
+        if ($role == 'ROLE_USER') {
+            $em->remove($user);
+            $em->flush();
 
-            $passwordConstraint = new Assert\NotBlank();
-            $errorList = $this->get('validator')->validate($password, $passwordConstraint);
-
-            if(count($errorList) == 0)
-            {
-                $encoder = $this->container->get('security.password_encoder');
-                $encoded = $encoder->encodePassword($user, $password);
-
-                $user->setPassword($encoded);
-
-                $em = $this->getDoctrine()->getManager();
-                $em->persist($user);
-                $em->flush();
-
-                $successMessage = $this->get('translator')->trans('The user has been created');
-                $this->addFlash('mensaje', $successMessage);
-
-                return $this->redirectToRoute('jgc_user_index');
-            }else
-            {
-                $errorMessage = new FormError($errorList[0]->getMessage());
-                $form->get('password')->addError($errorMessage);
-            }
+            $message = $this->get('translator')->trans('The user has been deleted');
+            $removed = 1;
+            $alert = 'mensaje';
+        } elseif ($role == 'ROLE_ADMIN') {
+            $message = $this->get('translator')->trans('The user could not be deleted');
+            $removed = 0;
+            $alert = 'error';
         }
 
-        return $this->render('JGCUserBundle:User:add.html.twig', array('form' => $form->createView()));
-
+        return array('removed' => $removed, 'message' => $message, 'alert' => $alert);
     }
 }
